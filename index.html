@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bash-A-Rat</title>
+<style>
+  :root { --bg:#0e0e10; --panel:#1a1a1f; --ink:#eaeaea; --muted:#a5a5b3; --accent:#d8b74a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:radial-gradient(1200px 900px at 50% -10%, #23232a, #0b0b0d); }
+  .wrap { max-width:1200px; margin:24px auto; padding:16px; }
+  h1 { margin:0 0 8px; font-weight:800; letter-spacing:.3px; }
+
+  .table { background:linear-gradient(180deg,#1b1b21,#16161b); border:1px solid #2a2a33; border-radius:14px; padding:16px; }
+  .legend { font-size:13px; color:#cfcfdd; margin-bottom:6px; }
+  .arena { display:grid; grid-template-columns: 1fr minmax(220px, 300px) 1fr; align-items:center; gap:18px; margin-top:8px; }
+  @media (max-width:880px){ .arena { grid-template-columns:1fr; } }
+
+  .panel { width:100%; aspect-ratio:1/1; background:#101015; border:2px solid #2c2c36; border-radius:16px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .05s ease, border-color .15s ease; overflow:hidden; }
+  .panel:hover { transform: translateY(-1px); border-color:#3a3a48; }
+  .panel img { width:100%; height:100%; object-fit:scale-down; display:block; }
+  /* Make panels BIG on larger screens */
+  .left, .right { height: clamp(260px, 30vw, 460px); }
+  .center { height: clamp(200px, 22vw, 360px); }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin:12px 0 0; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  label { font-size:12px; letter-spacing:.3px; color:var(--muted); }
+  input[type=number] { width:120px; padding:10px 12px; border-radius:10px; border:1px solid #34343e; background:#0f0f14; color:var(--ink); }
+  .btn { padding:10px 14px; border-radius:10px; border:1px solid #3b3b45; background:#16161c; color:var(--ink); cursor:pointer; font-weight:700; transition:all .12s ease; }
+  .btn:hover { filter:brightness(1.12); transform:translateY(-1px); }
+  .accent { border-color:#6d5a22; background:linear-gradient(180deg,#2b2613,#1f1a0a); color:#ffd76a; }
+  .ok { border-color:#1f5837; background:linear-gradient(180deg,#132b1c,#0d1f14); color:#bff0cd; }
+
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .pill { padding:8px 12px; border:1px solid #32323a; border-radius:999px; color:#d6d6df; }
+  .log { margin-top:12px; padding:10px 12px; min-height:40px; background:#121219; border:1px solid #2a2a33; border-radius:10px; color:#d8d8e2; font-size:14px; }
+
+  /* Hammer cursor toggled on body during an open round */
+  .hammer-cursor,
+  .hammer-cursor * { cursor: url('assets/hammer.png') 16 16, url('assets/hammer.ico'), crosshair !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🪓 Bash-A-Rat</h1>
+  <section class="table">
+    <div class="legend"><b>Payouts:</b> Left/Right pay <b>2×</b>. Center (No-Rat) pays <b>10×</b>.</div>
+
+    <div class="arena" id="arena">
+      <div class="panel left" id="boxLeft" title="Bet Left">
+        <img id="imgLeft" alt="Left Box" src="assets/box1.png">
+      </div>
+
+      <div class="panel center" id="centerNoRat" title="Bet Center (No-Rat)">
+        <img id="imgCenter" alt="No Rat" src="assets/norat.png">
+      </div>
+
+      <div class="panel right" id="boxRight" title="Bet Right">
+        <img id="imgRight" alt="Right Box" src="assets/box2.png">
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="field">
+        <label for="gp">Wager — Gold (gp)</label>
+        <input type="number" id="gp" min="0" step="1" value="1">
+      </div>
+      <div class="field">
+        <label for="sp">Wager — Silver (sp) <span class="muted">(10 sp = 1 gp)</span></label>
+        <input type="number" id="sp" min="0" max="9" step="1" value="0">
+      </div>
+      <button class="btn accent" id="newRound">New Round</button>
+      <button class="btn ok" id="cashOut">Cash Out</button>
+      <span class="muted" id="hint">Click Left, Right, or Center.</span>
+    </div>
+
+    <div class="row">
+      <span class="pill">Spent: <b id="spentOut">0 gp 0 sp</b></span>
+      <span class="pill">Won: <b id="wonOut">0 gp 0 sp</b></span>
+      <span class="pill">Net: <b id="netOut">0 gp 0 sp</b></span>
+    </div>
+
+    <div class="log" id="log">Welcome to the pit. Place your wager and choose your target.</div>
+  </section>
+</div>
+
+<script>
+/* ===== Money utils (10 sp = 1 gp) ===== */
+const toSp = (gp, sp) => (Math.max(0, parseInt(gp||0,10))*10) + (Math.max(0, parseInt(sp||0,10))||0);
+const fmtSp = (spTotal) => {
+  const sign = spTotal < 0 ? '-' : '';
+  const abs = Math.abs(spTotal);
+  const gp = Math.floor(abs / 10);
+  const sp = abs % 10;
+  return `${sign}${gp} gp ${sp} sp`;
+};
+
+/* ===== State ===== */
+let spentSp = 0;
+let wonSp   = 0;
+let roundOpen = true;
+
+const imgLeft   = document.getElementById('imgLeft');
+const imgRight  = document.getElementById('imgRight');
+const imgCenter = document.getElementById('imgCenter');
+
+const leftBox   = document.getElementById('boxLeft');
+const rightBox  = document.getElementById('boxRight');
+const centerBet = document.getElementById('centerNoRat');
+
+const gpEl = document.getElementById('gp');
+const spEl = document.getElementById('sp');
+
+const spentOut = document.getElementById('spentOut');
+const wonOut   = document.getElementById('wonOut');
+const netOut   = document.getElementById('netOut');
+
+const logEl = document.getElementById('log');
+
+const randPick = (n) => Math.floor(Math.random()*n);
+const boxImg    = () => `assets/box${1+randPick(4)}.png`;
+const winImg    = () => `assets/win${1+randPick(4)}.png`;
+const loseImg   = () => `assets/lose${1+randPick(4)}.png`;
+const ratImg    = () => `assets/rat${1+randPick(4)}.png`;
+
+const playOne = (src) => { const a = new Audio(src); a.play().catch(()=>{}); };
+const playRand = (list) => { playOne(list[randPick(list.length)]); };
+const sWinList  = ['assets/win1.wav','assets/win2.wav','assets/win3.wav','assets/win4.wav'];
+const sLoseList = ['assets/lose1.wav','assets/lose2.wav','assets/lose3.wav'];
+
+/* ===== UI Helpers ===== */
+function updateLedger(){
+  spentOut.textContent = fmtSp(spentSp);
+  wonOut.textContent   = fmtSp(wonSp);
+  netOut.textContent   = fmtSp(wonSp - spentSp);
+}
+
+function setClickable(on){
+  const pe = on ? 'auto' : 'none';
+  leftBox.style.pointerEvents  = pe;
+  rightBox.style.pointerEvents = pe;
+  centerBet.style.pointerEvents= pe;
+}
+
+function resetBoards(){
+  imgLeft.src = boxImg();
+  imgRight.src = boxImg();
+  imgCenter.src = 'assets/norat.png';
+  leftBox.style.borderColor = '';
+  rightBox.style.borderColor = '';
+  centerBet.style.borderColor = '';
+  roundOpen = true;
+  setClickable(true);
+  // Enable hammer cursor until the player chooses
+  document.body.classList.add('hammer-cursor');
+  logEl.textContent = 'New round. Place your wager and choose your target.';
+}
+
+function endRound(){
+  roundOpen = false;
+  setClickable(false);
+  // Remove hammer cursor once a choice is made
+  document.body.classList.remove('hammer-cursor');
+}
+
+/* ===== Core: Resolve a bet ===== */
+function resolveBet(choice){ // 'left' | 'right' | 'norat'
+  if(!roundOpen){ return; }
+
+  // Wager validation
+  const gp = parseInt(gpEl.value||'0',10);
+  const sp = parseInt(spEl.value||'0',10);
+  if(isNaN(gp)||isNaN(sp)||gp<0||sp<0||sp>9){
+    logEl.textContent = 'Enter a valid wager (gp ≥ 0, sp 0–9).';
+    return;
+  }
+  const wagerSp = toSp(gp, sp);
+  if(wagerSp <= 0){
+    logEl.textContent = 'Wager must be at least 1 sp.';
+    return;
+  }
+
+  // Outcome: Left (45%), Right (45%), No-Rat (10%)
+  const r = Math.random();
+  const outcome = (r < 0.45) ? 'left' : (r < 0.90 ? 'right' : 'norat');
+
+  // Stake placed
+  spentSp += wagerSp;
+
+  let wonThis = 0;
+
+  if(choice === 'left'){
+    if(outcome === 'left'){ // win 2x
+      imgLeft.src = winImg();
+      playRand(sWinList);
+      wonThis = 2 * wagerSp;
+      leftBox.style.borderColor = '#55a66f';
+      logEl.textContent = `CRUNCH! Left was right. You win ${fmtSp(wonThis)}.`;
+    } else {
+      imgLeft.src = loseImg();
+      playRand(sLoseList);
+      leftBox.style.borderColor = '#a65555';
+      if(outcome === 'right'){
+        imgRight.src = ratImg();
+        rightBox.style.borderColor = '#d8b74a';
+        logEl.textContent = 'Miss! The rat was in the Right box.';
+      } else {
+        logEl.textContent = 'Whiff! No rat this round.';
+      }
+    }
+  } else if(choice === 'right'){
+    if(outcome === 'right'){
+      imgRight.src = winImg();
+      playRand(sWinList);
+      wonThis = 2 * wagerSp;
+      rightBox.style.borderColor = '#55a66f';
+      logEl.textContent = `SPLAT! Right was right. You win ${fmtSp(wonThis)}.`;
+    } else {
+      imgRight.src = loseImg();
+      playRand(sLoseList);
+      rightBox.style.borderColor = '#a65555';
+      if(outcome === 'left'){
+        imgLeft.src = ratImg();
+        leftBox.style.borderColor = '#d8b74a';
+        logEl.textContent = 'Nope! The rat was in the Left box.';
+      } else {
+        logEl.textContent = 'No rat at all this round.';
+      }
+    }
+  } else { // 'norat'
+    if(outcome === 'norat'){
+      playOne('assets/noratwin.wav');
+      wonThis = 10 * wagerSp;
+      centerBet.style.borderColor = '#55a66f';
+      logEl.textContent = `Empty crates! You called it. You win ${fmtSp(wonThis)}.`;
+    } else {
+      playOne('assets/noratlose.wav');
+      centerBet.style.borderColor = '#a65555';
+      // Reveal where the rat actually was
+      if(outcome === 'left'){
+        imgLeft.src = ratImg();
+        leftBox.style.borderColor = '#d8b74a';
+      } else if(outcome === 'right'){
+        imgRight.src = ratImg();
+        rightBox.style.borderColor = '#d8b74a';
+      }
+      logEl.textContent = `Wrong call—rat spotted in the ${outcome==='left' ? 'Left' : 'Right'} box.`;
+    }
+  }
+
+  if(wonThis > 0){ wonSp += wonThis; }
+  updateLedger();
+  endRound();
+}
+
+/* ===== Wiring ===== */
+leftBox.addEventListener('click', ()=> resolveBet('left'));
+rightBox.addEventListener('click', ()=> resolveBet('right'));
+centerBet.addEventListener('click', ()=> resolveBet('norat'));
+
+document.getElementById('newRound').addEventListener('click', resetBoards);
+
+document.getElementById('cashOut').addEventListener('click', ()=>{
+  const net = wonSp - spentSp;
+  const msg = (net >= 0)
+    ? `You cash out with ${fmtSp(net)}. The house begrudgingly pays up.`
+    : `You owe ${fmtSp(-net)}. Pay the pit boss (or make a run for it).`;
+  alert(msg);
+  // Reset ledger
+  spentSp = 0; wonSp = 0; updateLedger();
+  logEl.textContent = 'Ledger reset. Fresh blood, fresh bets.';
+});
+
+/* ===== Init ===== */
+function seedStartFaces(){
+  imgLeft.src = boxImg();
+  imgRight.src = boxImg();
+  imgCenter.src = 'assets/norat.png';
+}
+seedStartFaces();
+updateLedger();
+// Start with hammer cursor active on first load as well
+document.body.classList.add('hammer-cursor');
+</script>
+</body>
+</html>

@@ -17,8 +17,8 @@
   @media (max-width:880px){ .arena { grid-template-columns:1fr; } }
 
   .panel { width:100%; aspect-ratio:1/1; background:#101015; border:2px solid #2c2c36; border-radius:16px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .05s ease, border-color .15s ease; overflow:hidden; }
-  .panel:hover { transform: translateY(-1px); border-color:#3a3a48; }
-  .panel img { width:100%; height:100%; object-fit:scale-down; display:block; }
+  .panel:hover { transform: translateY(-1px); border-color:#6a3a48; }
+  .panel img { width:100%; height:100%; object-fit:contain; display:block; }
   /* Make panels BIG on larger screens */
   .left, .right { height: clamp(260px, 30vw, 460px); }
   .center { height: clamp(200px, 22vw, 360px); }
@@ -177,7 +177,7 @@ function resolveBet(choice){ // 'left' | 'right' | 'norat'
   }
   const wagerSp = toSp(gp, sp);
   if(wagerSp <= 0){
-    logEl.textContent = 'Wager must be at least 1 sp.';
+    logEl.textContent = 'Bet something or get lost.';
     return;
   }
 
@@ -196,7 +196,7 @@ function resolveBet(choice){ // 'left' | 'right' | 'norat'
       playRand(sWinList);
       wonThis = 2 * wagerSp;
       leftBox.style.borderColor = '#55a66f';
-      logEl.textContent = `CRUNCH! Left was right. You win ${fmtSp(wonThis)}.`;
+      logEl.textContent = `Gottem! You killed a rat! Win ${fmtSp(wonThis)}.`;
     } else {
       imgLeft.src = loseImg();
       playRand(sLoseList);
@@ -204,9 +204,9 @@ function resolveBet(choice){ // 'left' | 'right' | 'norat'
       if(outcome === 'right'){
         imgRight.src = ratImg();
         rightBox.style.borderColor = '#d8b74a';
-        logEl.textContent = 'Miss! The rat was in the Right box.';
+        logEl.textContent = 'Failure! The rat was in the Right box.';
       } else {
-        logEl.textContent = 'Whiff! No rat this round.';
+        logEl.textContent = 'Sucker! No rat this round.';
       }
     }
   } else if(choice === 'right'){
@@ -215,7 +215,7 @@ function resolveBet(choice){ // 'left' | 'right' | 'norat'
       playRand(sWinList);
       wonThis = 2 * wagerSp;
       rightBox.style.borderColor = '#55a66f';
-      logEl.textContent = `SPLAT! Right was right. You win ${fmtSp(wonThis)}.`;
+      logEl.textContent = `Hell yeah! You killed a rat. Have ${fmtSp(wonThis)}.`;
     } else {
       imgRight.src = loseImg();
       playRand(sLoseList);
@@ -223,9 +223,9 @@ function resolveBet(choice){ // 'left' | 'right' | 'norat'
       if(outcome === 'left'){
         imgLeft.src = ratImg();
         leftBox.style.borderColor = '#d8b74a';
-        logEl.textContent = 'Nope! The rat was in the Left box.';
+        logEl.textContent = 'Miss! The rat was in the Left box.';
       } else {
-        logEl.textContent = 'No rat at all this round.';
+        logEl.textContent = 'Ha! No rat this time.';
       }
     }
   } else { // 'norat'
@@ -233,7 +233,7 @@ function resolveBet(choice){ // 'left' | 'right' | 'norat'
       playOne('assets/noratwin.wav');
       wonThis = 10 * wagerSp;
       centerBet.style.borderColor = '#55a66f';
-      logEl.textContent = `Empty crates! You called it. You win ${fmtSp(wonThis)}.`;
+      logEl.textContent = `The long shot pays off! You win ${fmtSp(wonThis)}.`;
     } else {
       playOne('assets/noratlose.wav');
       centerBet.style.borderColor = '#a65555';
@@ -245,7 +245,7 @@ function resolveBet(choice){ // 'left' | 'right' | 'norat'
         imgRight.src = ratImg();
         rightBox.style.borderColor = '#d8b74a';
       }
-      logEl.textContent = `Wrong call—rat spotted in the ${outcome==='left' ? 'Left' : 'Right'} box.`;
+      logEl.textContent = `Wrong! It was in the ${outcome==='left' ? 'Left' : 'Right'} box.`;
     }
   }
 
@@ -264,8 +264,8 @@ document.getElementById('newRound').addEventListener('click', resetBoards);
 document.getElementById('cashOut').addEventListener('click', ()=>{
   const net = wonSp - spentSp;
   const msg = (net >= 0)
-    ? `You cash out with ${fmtSp(net)}. The house begrudgingly pays up.`
-    : `You owe ${fmtSp(-net)}. Pay the pit boss (or make a run for it).`;
+    ? `HELL YEAH! You cash out with ${fmtSp(net)}. Update your sheet accordingly.`
+    : `UH OH! You owe ${fmtSp(-net)}. Pay the pit boss.`;
   alert(msg);
   // Reset ledger
   spentSp = 0; wonSp = 0; updateLedger();
@@ -285,3 +285,4 @@ document.body.classList.add('hammer-cursor');
 </script>
 </body>
 </html>
+

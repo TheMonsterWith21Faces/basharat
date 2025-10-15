@@ -81,7 +81,7 @@
       <span class="pill">Net: <b id="netOut">0 gp 0 sp</b></span>
     </div>
 
-    <div class="log" id="log">Welcome to the pit. Place your wager and choose your target.</div>
+    <div class="log" id="log">Welcome to the pit. Press "New Round" to begin.</div>
   </section>
 </div>
 
@@ -99,7 +99,7 @@ const fmtSp = (spTotal) => {
 /* ===== State ===== */
 let spentSp = 0;
 let wonSp   = 0;
-let roundOpen = true;
+let roundOpen = false;
 
 const imgLeft   = document.getElementById('imgLeft');
 const imgRight  = document.getElementById('imgRight');
@@ -280,8 +280,9 @@ function seedStartFaces(){
 }
 seedStartFaces();
 updateLedger();
-// Start with hammer cursor active on first load as well
-document.body.classList.add('hammer-cursor');
+setClickable(false);
+document.body.classList.remove('hammer-cursor');
+logEl.textContent = 'Press "New Round" to start the game.';
 </script>
 </body>
 </html>

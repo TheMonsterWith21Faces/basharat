@@ -1,5 +1,5 @@
-# basharat
-Bash-A-Rat - A fantasy TTRPG version of baccarat, but based on violent rodent murder.
+# Bash-A-Rat
+A fantasy TTRPG version of baccarat, but based on violent rodent murder.
 
 Invented by a forward-thinking croupier that got Employee of the Month for creating a new gambling opportunity AND helping the casino's rat infestation problem.
 

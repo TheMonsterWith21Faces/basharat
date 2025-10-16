@@ -5,6 +5,11 @@ Invented by a forward-thinking croupier that got Employee of the Month for creat
 
 Make a wager, start the round and either choose a box or choose "no rat." 90% of the time, a rat will be in one of the boxes. Smash it to death and win 2x your money. About 10% of the time the casino will choose not to include a rat in one of the boxes. If you choose "no rat" during one of those times you get 10x your bet.
 
+Play it here
+<h2>https://themonsterwith21faces.github.io/basharat/</h2>
+
+
+
 Legal notice
 
 I accept no legal responsibility if you decide to use this in stupid, illegal ways it was never intended for.
